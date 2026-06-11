@@ -28,7 +28,7 @@ Use this checklist whenever reviewing a pull request, patch, or local change set
 ### Compose Review
 - Ensure UI state is defined as an immutable `data class` updated only with `.copy()`.
 - Ensure ViewModels expose state via `StateFlow` and backing state via `MutableStateFlow`.
-- Verify Composable screens use `koinViewModel()`.
+- Verify Composable screens use `hiltViewModel()` (from `androidx.hilt.navigation.compose`).
 - Check that remote data loading screens show a shimmer loading state (`ShimmerComp` or shimmer modifier).
 
 ### View-Based Review
