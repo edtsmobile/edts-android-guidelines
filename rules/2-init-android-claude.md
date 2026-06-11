@@ -48,11 +48,11 @@ Version Code        : 1
 
 ## Build Flavors
 
-| Flavor       | Application ID              | Environment |
-|--------------|-----------------------------|-------------|
-| `staging`    | `edts.[PROJECT_NAME].dev`   | Staging     |
-| `aws`        | `edts.[PROJECT_NAME].aws`   | UAT         |
-| `production` | `edts.[PROJECT_NAME].android` | Production |
+| Flavor        | Application ID              | Environment |
+|---------------|-----------------------------|-------------|
+| `development` | `edts.[PROJECT_NAME].dev`   | Development |
+| `uat`         | `edts.[PROJECT_NAME].uat`   | UAT         |
+| `production`  | `edts.[PROJECT_NAME].android` | Production  |
 
 ---
 
