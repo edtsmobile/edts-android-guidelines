@@ -22,9 +22,9 @@ After identifying the UI library, determine the module layout:
 - **Multi-Module**: Check if `settings.gradle` or `settings.gradle.kts` includes multiple module declarations, specifically naming:
   - Core modules: `:core-domain`, `:core-data`, `:core-network`, etc.
   - Feature modules: `:feature-home`, `:feature-login`, etc.
-  - → For Compose: follow [3a-compose-multi-module.md](3a-compose-multi-module.md).
-  - → For View-based: follow [2-view-based.md](2-view-based.md).
+  - → For Compose: follow [4a-compose-multi-module.md](4a-compose-multi-module.md).
+  - → For View-based: follow [3-view-based.md](3-view-based.md).
 - **Single-Module**: Check if the project has only a single `app` module (monolithic structure) with all source code under one package namespace (typically divided by subpackages like `data/`, `domain/`, `ui/`).
-  - → For Compose: follow [3b-compose-single-module.md](3b-compose-single-module.md).
+  - → For Compose: follow [4b-compose-single-module.md](4b-compose-single-module.md).
 
 If the layout is genuinely ambiguous (e.g., a new empty repo or mixed signals), **ask the developer** which architecture to use before writing any code. Do not mix single-module and multi-module conventions.

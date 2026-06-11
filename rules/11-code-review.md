@@ -5,8 +5,8 @@ Use this checklist whenever reviewing a pull request, patch, or local change set
 ## 1. Review Order
 
 1. **Detect project type first** using [rules/1-project-detection.md](1-project-detection.md) to identify whether the project is View-based vs. Compose and Single vs. Multi-Module.
-2. **Apply the matching architecture rules** ([rules/2-view-based.md](rules/2-view-based.md) or [rules/3a-compose-multi-module.md](rules/3a-compose-multi-module.md) / [rules/3b-compose-single-module.md](rules/3b-compose-single-module.md)).
-3. **Apply code quality, unit testing, and security rules** ([rules/4-code-quality.md](rules/4-code-quality.md), [rules/5-unit-testing.md](rules/5-unit-testing.md), [rules/6-security.md](rules/6-security.md)).
+2. **Apply the matching architecture rules** ([rules/3-view-based.md](rules/3-view-based.md) or [rules/4a-compose-multi-module.md](rules/4a-compose-multi-module.md) / [rules/4b-compose-single-module.md](rules/4b-compose-single-module.md)).
+3. **Apply code quality, unit testing, and security rules** ([rules/8-code-quality.md](rules/8-code-quality.md), [rules/10-unit-testing.md](rules/10-unit-testing.md), [rules/9-security.md](rules/9-security.md)).
 4. **Report findings** before summaries, ordered by severity.
 5. **Include file and line references** for every actionable issue.
 

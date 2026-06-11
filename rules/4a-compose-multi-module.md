@@ -1,6 +1,6 @@
 # Jetpack Compose — Multi-Module Architecture
 
-> Use this file when the project is **multi-module** and uses **Jetpack Compose**. For single-module Compose projects, use [3b-compose-single-module.md](3b-compose-single-module.md) instead.
+> Use this file when the project is **multi-module** and uses **Jetpack Compose**. For single-module Compose projects, use [4b-compose-single-module.md](4b-compose-single-module.md) instead.
 
 ---
 

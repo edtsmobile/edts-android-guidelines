@@ -233,6 +233,33 @@ fun AppNavigation() {
 
 ---
 
+## Graduating to Multi-Module
+
+While a single-module structure is simpler to bootstrap, it is a starting architecture. As the application grows, compile-time performance, merge-conflict frequency, and clean architecture enforcement will degrade.
+
+### Graduation Triggers
+
+Teams MUST graduate to a multi-module architecture (conforming to [Jetpack Compose — Multi-Module Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/4a-compose-multi-module.md)) when any of the following triggers are met:
+
+1. **Feature Scope**: The project exceeds **5 distinct business domains or features** (e.g., Auth, Profile, Home, plus 3 or more functional domains).
+2. **Team Size**: More than **3 Android developers** actively commit to the repository concurrently.
+3. **Build Performance**: Clean build execution time exceeds **3 minutes** on standard local development machines.
+4. **Code Coupling**: Code boundaries leak (e.g., presentation components implicitly import models across domain limits without structural protection).
+
+### Graduation Steps (Out-In Extraction Sequence)
+
+To transition a single-module app to multi-module systematically, follow this extraction sequence:
+
+1. **Core Utilities & Base Models**: Create `:core:model` and `:core:utils`. Move base domain models and pure Kotlin helper classes first.
+2. **Design System & UI Resources**: Move `ui/theme/` and shared layout widgets in `ui/component/` to `:core:design-system`.
+3. **Data Layer**: Extract local Room databases, Retrofit API definitions, mappers, and repository implementations to `:core:data`.
+4. **Navigation Contracts**: Establish the typed route serialization definitions and navigation contract interfaces in `:core:navigation`.
+5. **Feature Modules Extraction**: For each subdirectory under `ui/feature/`, extract it into its own `:feature:xxx` module. Each feature module depends on `:core:model`, `:core:data`, and `:core:design-system`.
+6. **DI & Dependency Refactoring**: Shift Hilt `@InstallIn` modules to the appropriate new Gradle modules.
+7. **Monolithic App Cleanup**: Re-target `:app` to act as the thin compositor shell. `:app` depends on all feature modules and only contains the Application initialization (`App.kt`), the entry Activity, and the root navigation `AppNavigation` coordinator.
+
+---
+
 ## Rules
 
 1. **Layer Directories**: Do not mix files outside of `data/`, `domain/`, and `ui/` folder packages.
