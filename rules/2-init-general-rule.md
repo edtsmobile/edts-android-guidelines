@@ -1,4 +1,4 @@
-# Jetpack Claude Bootstrap Guide (init-android-claude)
+# Jetpack Claude Bootstrap Guide (init-general-rule)
 
 > This file defines the mandatory standard bootstrap templates for `CLAUDE.md` and `AGENTS.md` files within EDTS Android projects.
 
