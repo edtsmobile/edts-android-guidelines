@@ -1,5 +1,5 @@
 ---
-name: edts-android
+name: edts-android-guidelines
 description: Mandatory architecture, folder-structure, naming, and code-quality rules for EDTS Android projects. Use this whenever reading, writing, reviewing, or refactoring Kotlin/XML code in an EDTS Android app or module.
 ---
 
