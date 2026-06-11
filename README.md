@@ -24,7 +24,7 @@ When boarding a new project, read the guideline rules in the following sequence 
 
 1. **Onboarding**:
    - Project type detection: read **[Project Detection](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/1-project-detection.md)**.
-   - Claude agent configuration: read **[Jetpack Claude Bootstrap Guide](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/2-init-android-claude.md)**.
+   - Claude agent configuration: read **[Jetpack Claude Bootstrap Guide](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/2-init-general-rule.md)**.
 2. **Architectural Blueprints**:
    - For legacy/View-based apps: read **[View-Based Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/3-view-based.md)**.
    - For multi-module Compose apps: read **[Compose Multi-Module Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/4a-compose-multi-module.md)**.
@@ -49,7 +49,7 @@ An AI agent working on a target repository must verify the presence of `CLAUDE.m
 
 ```bash
 # Run detection and generate/merge the standard CLAUDE.md template rules
-npx skills run edts-android init-android-claude
+npx skills run edts-android init-general-rule
 ```
 
 ---
