@@ -971,4 +971,4 @@ app/src/main/AndroidManifest.xml       → permissions & entry points
 
 *Updated: 11 June 2026 — Added Reference App section: path, package mapping table, technology notes, copy-vs-rewrite guide*
 *Updated: 30 May 2026 — Fixed Module Structure to match actual implementation (core/data source tree, removed non-existent core/testing)*
-*CLAUDE.md version: 1.0*
+*AGENTS.md version: 1.0*
