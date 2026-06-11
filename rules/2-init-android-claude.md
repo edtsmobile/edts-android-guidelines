@@ -1,29 +1,42 @@
 # Jetpack Claude Bootstrap Guide (init-android-claude)
 
-> This file defines the mandatory standard bootstrap template for `CLAUDE.md` files within EDTS Android projects.
+> This file defines the mandatory standard bootstrap templates for `CLAUDE.md` and `AGENTS.md` files within EDTS Android projects.
 
 ---
 
 ## 1. Project Detection & Bootstrapping
 
-AI agents and developers working on an EDTS Android project MUST ensure that a standard `CLAUDE.md` exists at the root of the repository.
+AI agents and developers working on an EDTS Android project MUST ensure that a standard `CLAUDE.md` and `AGENTS.md` exist at the root of the repository.
 
 1. **Detection**: Run the detection steps defined in `rules/1-project-detection.md` to identify:
    - **Generation**: View-based (Gen 1) vs Jetpack Compose (Gen 2).
    - **Structure**: Single-Module vs Multi-Module.
 2. **Metadata Extraction**: Parse target files (e.g. `app/build.gradle.kts`, `settings.gradle.kts`) to resolve the following variables:
    - `[PROJECT_NAME]`: The name of the project repository (e.g., `membercard`, `wallet`).
-   - `[PACKAGE_NAME]`: The application or module namespace (e.g., `edts.membercard.android`).
+   - `[PACKAGE_NAME]`: The application or module namespace (e.g., `edts.[PROJECT_NAME].android`).
    - `[MIN_SDK]`, `[TARGET_SDK]`, `[COMPILE_SDK]`: SDK target numbers.
 3. **Write/Merge**:
-   - If `CLAUDE.md` does not exist, write the standard template below.
-   - If `CLAUDE.md` already exists, non-destructively merge the rules and references sections while preserving custom project-specific build flavors, credentials, or custom setup parameters.
+   - If `CLAUDE.md` does not exist:
+     - Write `@AGENTS.md` to `CLAUDE.md`.
+     - Write the standard template below into `AGENTS.md`.
+   - If `CLAUDE.md` already exists and does not contain `@AGENTS.md`:
+     - Move all existing `CLAUDE.md` contents to `AGENTS.md` first.
+     - Overwrite `CLAUDE.md` to contain only `@AGENTS.md`.
+     - Non-destructively merge the rules and references sections inside `AGENTS.md` while preserving custom project-specific build flavors, credentials, or custom setup parameters.
+   - If `CLAUDE.md` already contains `@AGENTS.md`:
+     - Non-destructively merge the rules and references sections inside `AGENTS.md`.
 
 ---
 
-## 2. Standard CLAUDE.md Template
+## 2. Standard Bootstrap Templates
 
-The generated `CLAUDE.md` file MUST strictly conform to the following layout:
+The generated `CLAUDE.md` file MUST contain exactly the following line:
+
+```markdown
+@AGENTS.md
+```
+
+The generated `AGENTS.md` file MUST strictly conform to the following layout:
 
 ````markdown
 # Android Project Guide
