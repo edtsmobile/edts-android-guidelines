@@ -76,4 +76,12 @@ Use this checklist whenever reviewing a pull request, patch, or local change set
 
 ## 7. Git Safety
 
-- **Never run `git push --force`**: If a push fails due to a diverged remote, explain the situation and ask the user how to proceed. `--force-with-lease` is only allowed when the user explicitly requests it.
+- **Never run `git push --force` (or `-f`)**: Under no circumstances should raw force pushes be executed on any branch.
+- **Force Override Prevention (`--force-with-lease` / `--force-if-includes`)**: If a history rewrite is absolutely necessary on a non-shared branch, developers MUST use `--force-with-lease` and `--force-if-includes` together:
+  ```bash
+  git push origin <branch-name> --force-with-lease --force-if-includes
+  ```
+- **Resolving Diverged Remotes**: If a push is rejected because the remote has diverged:
+  1. Fetch the latest changes: `git fetch origin`
+  2. Rebase or merge local commits: `git rebase origin/<branch-name>`
+  3. Resolve conflicts locally and test the build before pushing again.

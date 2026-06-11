@@ -26,3 +26,4 @@ These rules govern how you operate when assisting in an EDTS Android project.
 
 - **Log every AI-made change** to `ai.log` in the project root — one line per change point, format: `[YYYY-MM-DD HH:MM:SS] <brief description>`. Create the file if it does not exist; never overwrite existing entries.
 - **Ask the user about any unclear decision** before proceeding. Do not assume ambiguous requirements, architecture choices, or scope. A clarifying question is always cheaper than a wrong implementation.
+- **No Force Pushes**: The agent is strictly prohibited from running `git push --force` or `--force-with-lease` automatically. If a push is rejected due to local/remote divergence, the agent MUST pause, explain the conflict, and ask the user for permission to rebase or merge instead of force pushing.

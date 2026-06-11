@@ -80,7 +80,7 @@ abstract class BaseActivity<VB : ViewBinding> : AppCompatActivity() {
 
 ---
 
-## 2. BaseViewModel / LpiViewModel Template
+## 2. BaseViewModel Template
 
 View-based ViewModels **must** use `LiveData` (or `MutableLiveData`) for outputs observed by Activities/Fragments.
 
