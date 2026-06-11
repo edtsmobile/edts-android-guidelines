@@ -49,7 +49,7 @@ An AI agent working on a target repository must verify the presence of `CLAUDE.m
 
 ```bash
 # Run detection and generate/merge the standard CLAUDE.md template rules
-npx skills run edts-android-guidelines init-android-claude
+npx skills run edts-android init-android-claude
 ```
 
 ---
