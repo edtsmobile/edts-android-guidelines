@@ -8,13 +8,13 @@ Mandatory development guidelines, folder structures, coding standards, and secur
 
 EDTS Android projects are classified into two generations. Developers and AI agents MUST identify the project's generation before writing or refactoring any code.
 
-| Layer | **Gen 1 (View-based)** | **Gen 2 (Jetpack Compose)** |
-|---|---|---|
-| **UI Framework** | XML Layouts + ViewBinding | Jetpack Compose |
-| **Dependency Injection** | Koin | Hilt |
-| **Async & Reactive** | LiveData + Callbacks | Coroutines + StateFlow |
-| **Image Loading** | Glide | Coil |
-| **Navigation** | `ModuleNavigator` | Compose Navigation 3 (`androidx.navigation3`) |
+| Layer                    | **Gen 1 (View-based)**    | **Gen 2 (Jetpack Compose)**                   |
+| ------------------------ | ------------------------- | --------------------------------------------- |
+| **UI Framework**         | XML Layouts + ViewBinding | Jetpack Compose                               |
+| **Dependency Injection** | Koin                      | Hilt                                          |
+| **Async & Reactive**     | LiveData + Callbacks      | Coroutines + StateFlow                        |
+| **Image Loading**        | Glide                     | Coil                                          |
+| **Navigation**           | `ModuleNavigator`         | Compose Navigation 3 (`androidx.navigation3`) |
 
 ---
 
@@ -86,8 +86,8 @@ Ensure Node.js is installed locally, then run the appropriate command:
 npx skills add edtsmobile/edts-android-guidelines
 
 # Update the guidelines skill
-npx skills update -g edts-android-guidelines
+npx skills update edts-android-guidelines
 
 # Remove the guidelines skill
-npx skills remove -g edts-android-guidelines
+npx skills remove edts-android-guidelines
 ```
