@@ -12,13 +12,17 @@ You are working on an **EDTS Android project**. These guidelines are mandatory �
 | File | Topic |
 | --- | --- |
 | [rules/1-project-detection.md](rules/1-project-detection.md) | Detecting View-based vs. Compose and Single vs. Multi-Module |
-| [rules/2-view-based.md](rules/2-view-based.md) | View-based Architecture — structure, base classes, DI, mapping |
-| [rules/3a-compose-multi-module.md](rules/3a-compose-multi-module.md) | Jetpack Compose Multi-Module Architecture |
-| [rules/3b-compose-single-module.md](rules/3b-compose-single-module.md) | Jetpack Compose Single-Module Architecture |
-| [rules/4-code-quality.md](rules/4-code-quality.md) | Naming conventions and Kotlin code quality standards |
-| [rules/5-unit-testing.md](rules/5-unit-testing.md) | Unit testing rules and patterns (JUnit4 + MockK + Google Truth) |
-| [rules/6-security.md](rules/6-security.md) | Security rules (tokens, storage, networking) |
-| [rules/7-code-review.md](rules/7-code-review.md) | Code review checklist and reporting rules |
+| [rules/2-init-android-claude.md](rules/2-init-android-claude.md) | Jetpack Claude Bootstrap Guide |
+| [rules/3-view-based.md](rules/3-view-based.md) | View-based Architecture — structure, base classes, DI, mapping |
+| [rules/4a-compose-multi-module.md](rules/4a-compose-multi-module.md) | Jetpack Compose Multi-Module Architecture |
+| [rules/4b-compose-single-module.md](rules/4b-compose-single-module.md) | Jetpack Compose Single-Module Architecture |
+| [rules/5-networking.md](rules/5-networking.md) | Networking and API layer guidelines |
+| [rules/6-mapping.md](rules/6-mapping.md) | Data mapping guidelines (MapStruct & Kotlin Extensions) |
+| [rules/7-local-storage.md](rules/7-local-storage.md) | Local storage rules (Room database, SharedPreferences) |
+| [rules/8-code-quality.md](rules/8-code-quality.md) | Naming conventions and Kotlin code quality standards |
+| [rules/9-security.md](rules/9-security.md) | Security rules (tokens, storage, networking) |
+| [rules/10-unit-testing.md](rules/10-unit-testing.md) | Unit testing rules and patterns (JUnit4 + MockK + Google Truth) |
+| [rules/11-code-review.md](rules/11-code-review.md) | Code review checklist and reporting rules |
 
 ## AI Workflow Rules
 
