@@ -12,7 +12,7 @@ You are working on an **EDTS Android project**. These guidelines are mandatory â
 | File                                                                   | Topic                                                           |
 | ---------------------------------------------------------------------- | --------------------------------------------------------------- |
 | [rules/1-project-detection.md](rules/1-project-detection.md)           | Detecting View-based vs. Compose and Single vs. Multi-Module    |
-| [rules/2-init-android-claude.md](rules/2-init-android-claude.md)       | Jetpack Claude Bootstrap Guide                                  |
+| [rules/2-init-general-rule.md](rules/2-init-general-rule.md)           | Agent Bootstrap Guide                                           |
 | [rules/3-view-based.md](rules/3-view-based.md)                         | View-based Architecture â€” structure, base classes, DI, mapping  |
 | [rules/4a-compose-multi-module.md](rules/4a-compose-multi-module.md)   | Jetpack Compose Multi-Module Architecture                       |
 | [rules/4b-compose-single-module.md](rules/4b-compose-single-module.md) | Jetpack Compose Single-Module Architecture                      |
