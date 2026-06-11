@@ -28,17 +28,17 @@
              └─────────────┘
 ```
 
-- **`:app`**: Root module, initializes Koin and hosts the top-level `NavHost`.
-- **`:feature-xxx`**: Specific feature modules, containing Presentation code (`@Composable`, `ViewModel`, Koin feature modules).
-- **`:core-nav`**: Interface module for cross-feature navigation.
+- **`:app`**: Root module, initializes Hilt and hosts the top-level `NavDisplay` back stack.
+- **`:feature-xxx`**: Specific feature modules, containing Presentation code (`@Composable`, `ViewModel`, Hilt feature modules).
+- **`:core-nav`**: Module declaring the shared `@Serializable` route contracts.
 - **`:core-data`**: Network sources, local databases, MapStruct mappers, and repository implementations.
-- **`:core-domain`**: Pure Kotlin module with domain models, repository interfaces, and use case interactor classes.
+- **`:core-domain`**: Pure Kotlin module with domain models, repository interfaces, and use case classes.
 
 ---
 
 ## 1. BaseComposeActivity Template
 
-Activities in Compose modules act as thin hosts that set up the content view and delegate navigation to Compose `NavHost`. They must extend `BaseComposeActivity`.
+Activities in Compose modules act as thin hosts that set up the content view and delegate navigation to Compose Navigation 3 (`NavDisplay`). They must extend `BaseComposeActivity` and be annotated with Hilt's `@AndroidEntryPoint`.
 
 ```kotlin
 package com.edts.mobile.core.ui.base
@@ -47,7 +47,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 abstract class BaseComposeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,47 +68,65 @@ abstract class BaseComposeActivity : ComponentActivity() {
 
 ---
 
-## 2. ScreenState Immutable Data Class Template
+## 2. ScreenState & Intent Templates (MVI Pattern)
 
-Screen state must be modeled as a single, immutable Kotlin `data class`.
+Screen state must be modeled as a single, immutable Kotlin `data class`, and user actions modeled as `sealed interface` intents.
 
 ```kotlin
 package com.edts.mobile.feature_home.presentation.state
 
 import com.edts.mobile.core_domain.model.ProductModel
 
+// Screen State
 data class HomeScreenState(
     val isLoading: Boolean = false,
     val products: List<ProductModel> = emptyList(),
     val errorMessage: String? = null
 )
+
+// UI Intents
+sealed interface HomeIntent {
+    data object LoadProducts : HomeIntent
+    data object Refresh : HomeIntent
+}
 ```
 
 ---
 
-## 3. ViewModel StateFlow Template
+## 3. ViewModel StateFlow Template (Hilt + MVI)
 
-ViewModels in Compose projects must expose state via `StateFlow` and trigger asynchronous actions inside `viewModelScope.launch`.
+ViewModels in Compose projects must be annotated with `@HiltViewModel`, expose state via `StateFlow`, and process intents using `processIntent()`.
 
 ```kotlin
 package com.edts.mobile.feature_home.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.edts.mobile.core_domain.use_case.home.GetProductsUseCase
 import com.edts.mobile.feature_home.presentation.state.HomeScreenState
+import com.edts.mobile.feature_home.presentation.intent.HomeIntent
 import com.edts.mobile.core.util.Resource
 
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val getProductsUseCase: GetProductsUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeScreenState())
     val state: StateFlow<HomeScreenState> = _state.asStateFlow()
 
-    fun loadProducts() {
+    fun processIntent(intent: HomeIntent) {
+        when (intent) {
+            is HomeIntent.LoadProducts -> loadProducts()
+            is HomeIntent.Refresh -> loadProducts()
+        }
+    }
+
+    private fun loadProducts() {
         viewModelScope.launch {
             getProductsUseCase.execute().collect { resource ->
                 _state.update { currentState ->
@@ -130,31 +150,31 @@ class HomeViewModel(
 
 ---
 
-## 4. @Composable Screen Template (with koinViewModel())
+## 4. @Composable Screen Template (with hiltViewModel())
 
-Composable screens must inject their ViewModels using Koin's `koinViewModel()`. For preview and testability, separate the stateful screen from the stateless content layout.
+Composable screens must inject their ViewModels using Hilt's `hiltViewModel()`. For preview and testability, separate the stateful screen from the stateless content layout.
 
 ```kotlin
 package com.edts.mobile.feature_home.presentation.screen
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.edts.mobile.feature_home.presentation.viewmodel.HomeViewModel
 import com.edts.mobile.feature_home.presentation.state.HomeScreenState
+import com.edts.mobile.feature_home.presentation.intent.HomeIntent
 
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = koinViewModel(),
+    viewModel: HomeViewModel = hiltViewModel(),
     onNavigateToDetail: (productId: String) -> Unit
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.loadProducts()
+        viewModel.processIntent(HomeIntent.LoadProducts)
     }
 
     HomeScreenContent(
@@ -204,25 +224,29 @@ fun ProductsLoadingComp() {
 
 ---
 
-## 7. DI configuration (Koin 4.1.0 DSL)
+## 7. DI Configuration (Hilt Modules)
 
-Define repository and usecase modules in `core-domain` / `core-data` structures, and register ViewModels inside feature modules.
+Register bindings and providers in Hilt modules using `@Module` and `@InstallIn`. ViewModels do not need manual registration.
 
 ```kotlin
-// In :feature-home Koin module
-val featureHomeModule = module {
-    viewModel { HomeViewModel(get()) }
-}
+package com.edts.mobile.core_data.di
 
-// In :core-data Koin module
-val coreDataModule = module {
-    single { InfoMapper.INSTANCE }
-    singleOf(::ProductRepository) bind IProductRepository::class
-}
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+import com.edts.mobile.core_data.repository.ProductRepositoryImpl
+import com.edts.mobile.core_domain.repository.ProductRepository
 
-// In :core-domain Koin module
-val coreDomainModule = module {
-    factoryOf(::GetProductsInteractor) bind GetProductsUseCase::class
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+    @Binds
+    @Singleton
+    abstract fun bindProductRepository(
+        impl: ProductRepositoryImpl
+    ): ProductRepository
 }
 ```
 
@@ -252,31 +276,100 @@ interface ProductMapper {
 
 ---
 
-## 9. ModuleNavigator for Cross-Feature Navigation
+## 9. Compose Navigation (Navigation 3)
 
-Compose modules must not direct-link feature code. Define the navigation contract in `:core-nav`:
+Define feature screens and flow graph entries using Jetpack Compose Navigation 3 with `@Serializable` typed routes and `entry` builders:
 
 ```kotlin
-package com.edts.mobile.navigation
+package com.edts.mobile.feature_home.navigation
 
-import androidx.navigation.NavGraphBuilder
+import androidx.navigation3.entry
+import kotlinx.serialization.Serializable
+import com.edts.mobile.feature_home.presentation.screen.HomeScreen
 
-interface ModuleNavigator {
-    fun registerGraph(navGraphBuilder: NavGraphBuilder)
+@Serializable
+object HomeRoute
+
+// Feature modules define their screens as Nav3 Navigation Entries
+fun homeNavigationEntry(
+    onNavigateToDetail: (productId: String) -> Unit
+) = entry<HomeRoute> {
+    HomeScreen(onNavigateToDetail = onNavigateToDetail)
 }
 ```
 
 ---
 
-## 10. Compose Previews
+## 9a. Host App NavDisplay Configuration
 
-When writing `@Preview` blocks, pass state directly or construct mock/fake parameters. **Never** attempt to call Koin inject or make active network calls inside previews. Use fake UseCase implementations if necessary:
+The central `:app` module aggregates feature screen entries and renders them using `NavDisplay` observing a `rememberNavBackStack()` back stack:
 
 ```kotlin
-class FakeGetProductsUseCase : GetProductsUseCase {
-    override fun execute() = flowOf(Resource.Success(listOf(ProductModel("1", "Fake Item"))))
+package com.edts.mobile.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation3.NavDisplay
+import androidx.navigation3.entryProvider
+import androidx.navigation3.rememberNavBackStack
+import com.edts.mobile.feature_home.navigation.HomeRoute
+import com.edts.mobile.feature_home.navigation.homeNavigationEntry
+import com.edts.mobile.feature_detail.navigation.DetailRoute
+import com.edts.mobile.feature_detail.navigation.detailNavigationEntry
+
+@Composable
+fun AppNavigation() {
+    val backStack = rememberNavBackStack(initialRoute = HomeRoute)
+
+    NavDisplay(
+        backStack = backStack,
+        entryProvider = entryProvider {
+            +homeNavigationEntry(onNavigateToDetail = { productId ->
+                backStack.push(DetailRoute(productId))
+            })
+            +detailNavigationEntry(onBack = {
+                backStack.pop()
+            })
+        }
+    )
 }
 ```
+
+---
+
+## 10. Image Loading (Coil)
+
+Jetpack Compose screens must use Coil (`AsyncImage`) for loading remote network images.
+
+```kotlin
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil3.compose.AsyncImage
+import com.edts.mobile.feature_home.R
+
+@Composable
+fun ProductImageComp(
+    imageUrl: String,
+    contentDescription: String?,
+    modifier: Modifier = Modifier
+) {
+    AsyncImage(
+        model = imageUrl,
+        contentDescription = contentDescription,
+        placeholder = painterResource(R.drawable.placeholder_image),
+        error = painterResource(R.drawable.error_image),
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+    )
+}
+```
+
+---
+
+## 11. Compose Previews
+
+When writing `@Preview` blocks, pass state directly or construct mock/fake parameters. **Never** attempt to trigger dependency lookups or make network calls inside previews. If a Composable requires a ViewModel in the preview block, inject a mock ViewModel or use an interface providing preview-friendly mock data.
 
 ---
 
@@ -285,7 +378,8 @@ class FakeGetProductsUseCase : GetProductsUseCase {
 1. **No direct XML**: Do not inflate XML layouts in Compose code. UI must be 100% Compose.
 2. **Immutable State**: State must be defined as an immutable `data class` updated only with `.copy()`.
 3. **StateFlow for state**: ViewModels must expose state via `StateFlow` and backing mutable state via `MutableStateFlow`.
-4. **Koin injection**: Use `koinViewModel()` inside Screen composables, not standard `getViewModel()` or manually instantiated ViewModels.
-5. **No direct feature imports**: Navigate only via navigation modules/contracts, never import other feature modules directly.
-6. **Previews**: Ensure previews run locally by avoiding Koin dependency lookup in preview code blocks.
-7. **Resource check**: Before writing any new networking or repository class, inspect existing files. If matching services or repositories exist, ask the developer: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.
+4. **Hilt injection**: Use `hiltViewModel()` inside Screen composables, not standard ViewModels or Koin inject methods.
+5. **No direct feature imports**: Navigate only via Navigation 3, pushing serializable routes onto the back stack instead of importing other feature modules directly.
+6. **Previews**: Ensure previews run locally by avoiding DI dependency lookup in preview code blocks. Use mock ViewModels or interfaces supplying preview-friendly mock data for preview rendering.
+7. **Image Loading**: Always load images using Coil (`AsyncImage`) in `@Composable` contexts. Using Glide or other traditional View-based libraries in Compose layouts is prohibited.
+8. **Resource check**: Before writing any new networking or repository class, inspect existing files. If matching services or repositories exist, ask the developer: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.

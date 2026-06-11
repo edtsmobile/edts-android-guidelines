@@ -11,8 +11,9 @@ In a single-module project, all files live within the main application module (t
 
 ```
 app/src/main/java/[package]/
-├── App.kt                           # Application class initializing Koin
-├── AppModule.kt                     # Central Koin DI module registry
+├── App.kt                           # Application class initializing Hilt (@HiltAndroidApp)
+├── di/                              # Dependency Injection modules
+│   └── AppModule.kt                 # Central Hilt Module
 ├── data/                            # Data Layer
 │   ├── source/
 │   │   ├── local/                   # Room / EncryptedSharedPreferences
@@ -35,9 +36,9 @@ app/src/main/java/[package]/
 
 ---
 
-## 1. Application class & Koin Initialization
+## 1. Application class & Hilt Initialization
 
-DI configuration is declared in a central `AppModule.kt` file and initialized in the custom `Application` class.
+DI configuration is set up using Hilt. Annotate the application class with `@HiltAndroidApp` and declare binding/provider configurations inside `@Module` classes.
 
 ### App.kt
 
@@ -45,90 +46,107 @@ DI configuration is declared in a central `AppModule.kt` file and initialized in
 package com.edts.mobile
 
 import android.app.Application
-import org.koin.android.ext.koin.androidContext
-import org.koin.android.ext.koin.androidLogger
-import org.koin.core.context.startKoin
+import dagger.hilt.android.HiltAndroidApp
 
-class App : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        
-        startKoin {
-            androidLogger()
-            androidContext(this@App)
-            modules(appModule)
-        }
+@HiltAndroidApp
+class App : Application()
+```
+
+### di/AppModule.kt
+
+```kotlin
+package com.edts.mobile.di
+
+import dagger.Binds
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+import com.edts.mobile.data.repository.ProductRepositoryImpl
+import com.edts.mobile.domain.repository.ProductRepository
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class AppModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindProductRepository(
+        impl: ProductRepositoryImpl
+    ): ProductRepository
+    
+    companion object {
+        @Provides
+        @Singleton
+        fun provideInfoMapper(): InfoMapper = InfoMapper.INSTANCE
     }
 }
 ```
 
-### AppModule.kt
-
-```kotlin
-package com.edts.mobile
-
-import org.koin.core.module.dsl.viewModelOf
-import org.koin.core.module.dsl.factoryOf
-import org.koin.core.module.dsl.singleOf
-import org.koin.dsl.bind
-import org.koin.dsl.module
-import com.edts.mobile.data.repository.ProductRepository
-import com.edts.mobile.domain.repository.IProductRepository
-import com.edts.mobile.domain.use_case.GetProductsUseCase
-import com.edts.mobile.domain.use_case.GetProductsInteractor
-import com.edts.mobile.ui.feature.home.HomeViewModel
-
-val appModule = module {
-    // Data Sources & Mappers
-    single { InfoMapper.INSTANCE }
-    
-    // Repositories
-    singleOf(::ProductRepository) bind IProductRepository::class
-    
-    // Use Cases
-    factoryOf(::GetProductsInteractor) bind GetProductsUseCase::class
-    
-    // ViewModels
-    viewModelOf(::HomeViewModel)
-}
-```
+> [!NOTE]
+> ViewModels and UseCases do not require manual registration in Hilt modules; they are resolved automatically using `@Inject constructor` and `@HiltViewModel`.
 
 ---
 
-## 2. ViewModel & StateFlow Pattern
+## 2. ViewModel & StateFlow (MVI Pattern)
 
-ViewModels in single-module projects must follow the exact same `StateFlow<ScreenState>` patterns as multi-module projects, using a single immutable state class updated via state copying.
+ViewModels in single-module projects must follow the exact same MVI `StateFlow<ScreenState>` patterns as multi-module projects, using a single immutable state class and user intents processed via a `processIntent()` function.
 
 ```kotlin
 package com.edts.mobile.ui.feature.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import com.edts.mobile.domain.use_case.GetProductsUseCase
 import com.edts.mobile.core.util.Resource
 
+// 1. UI State
 data class HomeScreenState(
     val isLoading: Boolean = false,
-    val items: List<Product> = emptyList()
+    val items: List<Product> = emptyList(),
+    val errorMessage: String? = null
 )
 
-class HomeViewModel(
+// 2. User Intent
+sealed interface HomeIntent {
+    data object LoadProducts : HomeIntent
+    data object Refresh : HomeIntent
+}
+
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val getProductsUseCase: GetProductsUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeScreenState())
     val state: StateFlow<HomeScreenState> = _state.asStateFlow()
 
-    fun load() {
+    fun processIntent(intent: HomeIntent) {
+        when (intent) {
+            is HomeIntent.LoadProducts -> loadProducts()
+            is HomeIntent.Refresh -> loadProducts()
+        }
+    }
+
+    private fun loadProducts() {
         viewModelScope.launch {
             getProductsUseCase.execute().collect { resource ->
                 _state.update { currentState ->
                     when (resource) {
                         is Resource.Loading -> currentState.copy(isLoading = true)
-                        is Resource.Success -> currentState.copy(isLoading = false, items = resource.data ?: emptyList())
-                        is Resource.Error -> currentState.copy(isLoading = false)
+                        is Resource.Success -> currentState.copy(
+                            isLoading = false,
+                            items = resource.data ?: emptyList()
+                        )
+                        is Resource.Error -> currentState.copy(
+                            isLoading = false,
+                            errorMessage = resource.message
+                        )
                     }
                 }
             }
@@ -139,26 +157,26 @@ class HomeViewModel(
 
 ---
 
-## 3. Composable Screen UI & koinViewModel()
+## 3. Composable Screen UI & hiltViewModel()
 
-Inject ViewModels using `koinViewModel()` in screen-level composables. Reusable layout pieces must be extracted to the `ui/component/` directory and use the `Comp` suffix.
+Inject ViewModels using `hiltViewModel()` from Hilt in screen-level composables. Reusable layout pieces must be extracted to the `ui/component/` directory and use the `Comp` suffix.
 
 ```kotlin
 package com.edts.mobile.ui.feature.home
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.koin.androidx.compose.koinViewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.edts.mobile.ui.component.ProductItemComp
 
 @Composable
 fun HomeScreen(
-    viewModel: HomeViewModel = koinViewModel()
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.load()
+        viewModel.processIntent(HomeIntent.LoadProducts)
     }
 
     // Pass state down to a stateless layout or component
@@ -167,11 +185,60 @@ fun HomeScreen(
 
 ---
 
+## 4. Compose Navigation (Navigation 3)
+
+In single-module applications, manage screen navigation reactively using Navigation 3 by defining `@Serializable` routes and rendering destinations via `NavDisplay`.
+
+```kotlin
+package com.edts.mobile.ui.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation3.NavDisplay
+import androidx.navigation3.entry
+import androidx.navigation3.entryProvider
+import androidx.navigation3.rememberNavBackStack
+import kotlinx.serialization.Serializable
+import com.edts.mobile.ui.feature.home.HomeScreen
+import com.edts.mobile.ui.feature.detail.DetailScreen
+
+@Serializable
+object HomeRoute
+
+@Serializable
+data class DetailRoute(val id: String)
+
+@Composable
+fun AppNavigation() {
+    val backStack = rememberNavBackStack(initialRoute = HomeRoute)
+
+    NavDisplay(
+        backStack = backStack,
+        entryProvider = entryProvider {
+            entry<HomeRoute> {
+                HomeScreen(onNavigateToDetail = { id ->
+                    backStack.push(DetailRoute(id))
+                })
+            }
+            entry<DetailRoute> { backStackEntry ->
+                val route = backStackEntry.route<DetailRoute>()
+                DetailScreen(
+                    id = route?.id.orEmpty(),
+                    onBack = { backStack.pop() }
+                )
+            }
+        }
+    )
+}
+```
+
+---
+
 ## Rules
 
 1. **Layer Directories**: Do not mix files outside of `data/`, `domain/`, and `ui/` folder packages.
-2. **Koin Declarations**: Register all classes in `AppModule.kt`. Do not use manual instantiation in code components.
+2. **Hilt Setup**: ViewModels must be annotated with `@HiltViewModel` and constructor-injected with `@Inject constructor`. Declare abstract module interfaces with `@Binds` for interface implementations.
 3. **Component Naming**: All reusable widgets must live in `ui/component/` and end with `Comp.kt`.
 4. **State Management**: Modify UI state strictly via `_state.update { it.copy(...) }`. Direct mutable property bindings inside ViewModels are forbidden.
-5. **No direct ViewModel instantiation**: Screen Composables must resolve ViewModels only through `koinViewModel()`.
-6. **Resource check**: Before adding a new repository, database, or API service file, check if a matching implementation already exists. If yes, ask: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.
+5. **No direct ViewModel instantiation**: Screen Composables must resolve ViewModels only through `hiltViewModel()`.
+6. **Navigation 3**: Screen navigation must be state-driven using Jetpack Compose Navigation 3 (`androidx.navigation3`). Managing navigation via older event-driven `NavController` properties is prohibited.
+7. **Resource check**: Before adding a new repository, database, or API service file, check if a matching implementation already exists. If yes, ask: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.

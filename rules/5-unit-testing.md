@@ -85,29 +85,35 @@ package com.edts.mobile.ui.feature.home
 
 import com.google.common.truth.Truth.assertThat
 import io.mockk.*
+import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 import com.edts.mobile.core.util.Resource
 import com.edts.mobile.domain.use_case.GetProductsUseCase
 import com.edts.mobile.test.MainDispatcherRule
 
+@RunWith(JUnit4::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private val getProductsUseCase: GetProductsUseCase = mockk()
+    @MockK
+    lateinit var getProductsUseCase: GetProductsUseCase
     
     // SUT
     private lateinit var sut: HomeViewModel
 
     @Before
     fun setUp() {
+        MockKAnnotations.init(this)
         clearAllMocks()
         sut = HomeViewModel(getProductsUseCase)
     }
@@ -138,19 +144,24 @@ package com.edts.mobile.data.repository
 
 import com.google.common.truth.Truth.assertThat
 import io.mockk.*
+import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.junit.runners.JUnit4
 import com.edts.mobile.data.source.remote.InfoRemoteDataSource
 import com.edts.mobile.data.mapper.InfoMapper
 import com.edts.mobile.core.util.Resource
 
+@RunWith(JUnit4::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class GetInfoRepositoryTest {
 
-    private val remoteDataSource: InfoRemoteDataSource = mockk()
+    @MockK
+    lateinit var remoteDataSource: InfoRemoteDataSource
     
     // Mappers are simple stateless helpers, use the real instance
     private val mapper: InfoMapper = InfoMapper.INSTANCE
@@ -159,6 +170,7 @@ class GetInfoRepositoryTest {
 
     @Before
     fun setUp() {
+        MockKAnnotations.init(this)
         clearAllMocks()
         sut = GetInfoRepository(remoteDataSource, mapper)
     }

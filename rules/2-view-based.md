@@ -291,6 +291,24 @@ abstract class NetworkBoundProcessResource<ResultType, RequestType> {
     protected open fun onFetchFailed(throwable: Throwable) {}
 }
 ```
+## 8. Image Loading (Glide)
+
+View-based XML layouts must use Glide for loading remote network images. Never load raw network streams manually or use custom AsyncTasks.
+
+```kotlin
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
+
+// Standard image loading in Activity or Fragment
+fun loadImage(url: String, imageView: ImageView) {
+    Glide.with(imageView.context)
+        .load(url)
+        .placeholder(R.drawable.placeholder_image)
+        .error(R.drawable.error_image)
+        .transition(DrawableTransitionOptions.withCrossFade())
+        .into(imageView)
+}
+```
 
 ---
 
@@ -303,4 +321,5 @@ abstract class NetworkBoundProcessResource<ResultType, RequestType> {
 5. **No direct ViewModel execution**: Activities must not perform database or networking logic directly; all business logic must go through ViewModels and UseCases.
 6. **No manual mapping**: Response to domain model mapping must use MapStruct.
 7. **Cross-module separation**: Features must depend on navigation interfaces (`ModuleNavigator`) instead of referencing code from other features directly.
-8. **Resource check**: Before creating a new service, datasource, or repository file, verify whether one exists. If it exists, ask: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.
+8. **Image Loading**: Always load remote images using Glide. Processing raw image input streams or employing custom async workers to load images into ImageViews is prohibited.
+9. **Resource check**: Before creating a new service, datasource, or repository file, verify whether one exists. If it exists, ask: *"I found an existing `<FileName>` — should I add to that file or create a new one?"* Wait for developer confirmation.
