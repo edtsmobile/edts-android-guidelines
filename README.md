@@ -101,5 +101,5 @@ Add this to your AGENTS.md or CLAUDE.md in EDTS Android projects.
 
 ```sh
 # EDTS Android Project
-Use `edts-ios-guidelines` skill.
+Use `edts-android-guidelines` skill.
 ```
