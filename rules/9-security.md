@@ -28,3 +28,18 @@ Security is mandatory, not optional. These rules apply to all Android projects.
 ## 4. File & Folder Deletion
 
 - **Never use `rm` or `rm -rf`**: Do not use `rm` or `rm -rf` to delete workspace files or directories. Use the `trash` command instead (e.g. `trash path/to/file`) which moves files safely to the system Trash, preventing accidental permanent data loss.
+
+---
+
+## 5. Sensitive Files Agents Must Not Touch
+
+AI agents must not edit, move, print, or commit these files unless the developer explicitly asks for the exact operation:
+
+```text
+local.properties
+google-services.json
+keystore.jks
+*.keystore
+.env*
+secrets.gradle.kts
+```

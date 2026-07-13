@@ -36,35 +36,55 @@
 
 ---
 
-## 1. BaseComposeActivity Template
+## 1. EDTSKU Application & BaseComposeActivity
 
-Activities in Compose modules act as thin hosts that set up the content view and delegate navigation to Compose Navigation 3 (`NavDisplay`). They must extend `BaseComposeActivity` and be annotated with Hilt's `@AndroidEntryPoint`.
+EDTSKU is the foundational library for EDTS Android apps. Do not reimplement base activity, networking, storage, or result abstractions already provided by EDTSKU.
+
+Initialize `EdtsKu` once in `Application.onCreate()` using the DSL form:
 
 ```kotlin
-package com.edts.mobile.core.ui.base
-
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.compose.runtime.Composable
-import dagger.hilt.android.AndroidEntryPoint
-
 @AndroidEntryPoint
-abstract class BaseComposeActivity : ComponentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            AppTheme {
-                Content()
-            }
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        EdtsKu.init(this, BuildConfig.BASE_URL) {
+            setDebugging(BuildConfig.DEBUG)
+            setPackageName(packageName)
+            setVersionName(BuildConfig.VERSION_NAME)
+            setSslDomain(CommonUtil.hexToAscii(BuildConfig.SSL_DOMAIN_HEX))
+            setSslPinner(CommonUtil.hexToAscii(BuildConfig.SSL_PINNER_HEX))
+            setRefreshTokenUrlPath("/auth/refresh-token")
+            setTimeout(30L)
+            setTrackerConfig(TrackerConfig(...))
         }
+    }
+}
+```
+
+Activities in Compose modules act as thin hosts and must extend `BaseComposeActivity` from `id.co.edtslib.uibase_compose`. They must not create a project-local replacement for the EDTSKU base class.
+
+```kotlin
+@AndroidEntryPoint
+class HomeActivity : BaseComposeActivity() {
+
+    @Composable
+    override fun ContentUI() {
+        HomeScreen()
     }
 
     @Composable
-    abstract fun Content()
+    override fun ProjectTheme(content: @Composable () -> Unit) {
+        AppTheme { content() }
+    }
+
+    override fun getTrackerPageName() = "home"
+    override fun canBack() = true
 }
 ```
+
+`BaseComposeActivity` provides snackbar handling, base activity state, edge-to-edge setup, page tracking, back-navigation hooks, security guards, and Firebase Remote Config setup when `@xml/remote_config` exists.
+
+Feature ViewModels must extend `ViewModel()` directly. Do not extend `BaseComposeViewModel`; it is injected internally by `BaseComposeActivity` for shared activity behavior.
 
 ---
 

@@ -25,7 +25,7 @@ app/src/main/java/[package]/
 │   ├── repository/                  # Repository interfaces (contracts)
 │   └── use_case/                    # UseCase interfaces & Interactor implementations
 └── ui/                              # Presentation Layer
-    ├── base/                        # BaseComposeActivity, BaseViewModel
+    ├── base/                        # Project-specific UI helpers only; use EDTSKU base classes
     ├── theme/                       # Colors, Type, Shapes, Theme
     ├── component/                   # Reusable components named <Name>Comp
     └── feature/                     # Feature screens, organized by feature sub-folders
@@ -36,9 +36,9 @@ app/src/main/java/[package]/
 
 ---
 
-## 1. Application class & Hilt Initialization
+## 1. Application class, EDTSKU & Hilt Initialization
 
-DI configuration is set up using Hilt. Annotate the application class with `@HiltAndroidApp` and declare binding/provider configurations inside `@Module` classes.
+DI configuration is set up using Hilt. Annotate the application class with `@HiltAndroidApp`, initialize EDTSKU once in `Application.onCreate()`, and declare binding/provider configurations inside `@Module` classes.
 
 ### App.kt
 
@@ -49,7 +49,21 @@ import android.app.Application
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class App : Application()
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        EdtsKu.init(this, BuildConfig.BASE_URL) {
+            setDebugging(BuildConfig.DEBUG)
+            setPackageName(packageName)
+            setVersionName(BuildConfig.VERSION_NAME)
+            setSslDomain(CommonUtil.hexToAscii(BuildConfig.SSL_DOMAIN_HEX))
+            setSslPinner(CommonUtil.hexToAscii(BuildConfig.SSL_PINNER_HEX))
+            setRefreshTokenUrlPath("/auth/refresh-token")
+            setTimeout(30L)
+            setTrackerConfig(TrackerConfig(...))
+        }
+    }
+}
 ```
 
 ### di/AppModule.kt
@@ -86,6 +100,8 @@ abstract class AppModule {
 
 > [!NOTE]
 > ViewModels and UseCases do not require manual registration in Hilt modules; they are resolved automatically using `@Inject constructor` and `@HiltViewModel`.
+
+Screen-hosting activities must extend `BaseComposeActivity` from `id.co.edtslib.uibase_compose`. Do not create a project-local replacement for the EDTSKU base activity. Feature ViewModels must extend `ViewModel()` directly, not `BaseComposeViewModel`.
 
 ---
 
@@ -239,7 +255,7 @@ While a single-module structure is simpler to bootstrap, it is a starting archit
 
 ### Graduation Triggers
 
-Teams MUST graduate to a multi-module architecture (conforming to [Jetpack Compose — Multi-Module Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/4a-compose-multi-module.md)) when any of the following triggers are met:
+Teams MUST graduate to a multi-module architecture (conforming to [Jetpack Compose — Multi-Module Architecture](4a-compose-multi-module.md)) when any of the following triggers are met:
 
 1. **Feature Scope**: The project exceeds **5 distinct business domains or features** (e.g., Auth, Profile, Home, plus 3 or more functional domains).
 2. **Team Size**: More than **3 Android developers** actively commit to the repository concurrently.

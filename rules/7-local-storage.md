@@ -149,6 +149,33 @@ class ProductRepositoryImpl @Inject constructor(
 
 ---
 
+## 7. EDTSKU Local Sources
+
+Use EDTSKU-provided local sources for session/header storage and generic SharedPreferences-backed storage. Do not duplicate token/session infrastructure unless the project has an approved custom security requirement.
+
+### `HttpHeaderLocalSource`
+
+```kotlin
+val headerSource = EdtsKu.getDependencies().getHttpHeaderLocalSource
+
+headerSource.setBearerToken(token)
+headerSource.setHeader("refresh-token", refreshToken)
+headerSource.isLogged()
+headerSource.logout()
+```
+
+### `LocalDataSource<T>`
+
+```kotlin
+class UserSessionLocalSource : LocalDataSource<UserSession>() {
+    override fun getKeyName() = "user_session"
+    override fun getValue(json: String) = Gson().fromJson(json, UserSession::class.java)
+    override fun expiredInterval() = 3600
+}
+```
+
+---
+
 ## Rules & Anti-Patterns
 
 1. **Strict KSP Usage**: Ensure Room processor is declared as `ksp(libs.room.compiler)` instead of `kapt(...)` inside `build.gradle.kts`.
