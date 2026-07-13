@@ -23,23 +23,23 @@ EDTS Android projects are classified into two generations. Developers and AI age
 When boarding a new project, read the guideline rules in the following sequence to build appropriate context:
 
 1. **Onboarding**:
-   - Project type detection: read **[Project Detection](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/1-project-detection.md)**.
-   - Claude agent configuration: read **[Jetpack Claude Bootstrap Guide](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/2-init-general-rule.md)**.
+   - Project type detection: read **[Project Detection](rules/1-project-detection.md)**.
+   - Agent bootstrap configuration: read **[Agent Bootstrap Guide](rules/2-init-general-rule.md)**.
 2. **Architectural Blueprints**:
-   - For legacy/View-based apps: read **[View-Based Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/3-view-based.md)**.
-   - For multi-module Compose apps: read **[Compose Multi-Module Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/4a-compose-multi-module.md)**.
-   - For simpler/single-module Compose apps: read **[Compose Single-Module Architecture](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/4b-compose-single-module.md)**.
+   - For legacy/View-based apps: read **[View-Based Architecture](rules/3-view-based.md)**.
+   - For multi-module Compose apps: read **[Compose Multi-Module Architecture](rules/4a-compose-multi-module.md)**.
+   - For simpler/single-module Compose apps: read **[Compose Single-Module Architecture](rules/4b-compose-single-module.md)**.
 3. **Layer Development**:
-   - Networking & API layer: read **[Networking & API Layer Guidelines](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/5-networking.md)**.
-   - Data mapper conventions: read **[Data Mapping Guidelines](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/6-mapping.md)**.
-   - Local storage: read **[Local Storage Rules](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/7-local-storage.md)**.
+   - Networking & API layer: read **[Networking & API Layer Guidelines](rules/5-networking.md)**.
+   - Data mapper conventions: read **[Data Mapping Guidelines](rules/6-mapping.md)**.
+   - Local storage: read **[Local Storage Rules](rules/7-local-storage.md)**.
 4. **Coding Standards**:
-   - Conventions and style: read **[Code Quality](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/8-code-quality.md)**.
-   - Obfuscation and safety: read **[Security Guidelines](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/9-security.md)**.
+   - Conventions and style: read **[Code Quality](rules/8-code-quality.md)**.
+   - Obfuscation and safety: read **[Security Guidelines](rules/9-security.md)**.
 5. **Quality Gates**:
-   - Unit testing: read **[Unit Testing Requirements](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/10-unit-testing.md)**.
-   - Code review checklist: read **[Code Review Rules](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/11-code-review.md)**.
-   - Git compliance & safety: read **[Git Safety Rules](file:///Users/ridhanfadhilah/Public/Fadhil/mobile/android/edts/edts-mobile-guidelines/edts-android-guidelines/rules/11-code-review.md#7-git-safety)**.
+   - Unit testing: read **[Unit Testing Requirements](rules/10-unit-testing.md)**.
+   - Code review checklist: read **[Code Review Rules](rules/11-code-review.md)**.
+   - Git compliance & safety: read **[Git Safety Rules](rules/11-code-review.md#7-git-safety)**.
 
 ---
 
@@ -90,4 +90,16 @@ npx skills update edts-android-guidelines
 
 # Remove the guidelines skill
 npx skills remove edts-android-guidelines
+```
+
+---
+
+## 📦 How to Use
+
+Add this to your AGENTS.md or CLAUDE.md in EDTS Android projects.
+
+
+```sh
+# EDTS Android Project
+Use `edts-ios-guidelines` skill.
 ```

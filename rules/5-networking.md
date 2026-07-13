@@ -8,6 +8,23 @@ This guide defines the standardized configurations, architecture patterns, error
 
 All networking requests MUST utilize a single centralized OkHttpClient and Retrofit client provided by the `EdtsKu` dependency graph. Do not construct custom standalone Retrofit builders unless explicitly approved.
 
+Expose Retrofit through DI from EDTSKU:
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+object NetworkModule {
+    @Provides
+    @Singleton
+    fun provideRetrofit(): Retrofit = EdtsKu.getDependencies().retrofit
+
+    @Provides
+    @Singleton
+    fun provideMyApiService(retrofit: Retrofit): MyApiService =
+        retrofit.create(MyApiService::class.java)
+}
+```
+
 ### Timeouts and Logging
 
 - **Timeouts**: Connect, read, and write timeouts MUST be configured to **30 seconds** (`30L`).
@@ -124,4 +141,46 @@ EdtsKu.init(this, BuildConfig.BASE_URL) {
     setSslDomain(CommonUtil.hexToAscii(BuildConfig.SSL_DOMAIN_HEX))
     setSslPinner(CommonUtil.hexToAscii(BuildConfig.SSL_PINNER_HEX))
 }
+```
+
+---
+
+## 6. Repository Resource Patterns
+
+Use EDTSKU's standard resource wrappers for network and cache coordination. Do not hand-roll parallel abstractions when these fit the use case.
+
+### `NetworkBoundGetResource` for GET with local cache
+
+```kotlin
+class ProductRepository @Inject constructor(
+    private val remoteDataSource: ProductRemoteDataSource,
+    private val dao: ProductDao
+) {
+    fun getProducts(): Flow<Result<List<Product>>> =
+        object : NetworkBoundGetResource<List<Product>, ApiResponse<List<ProductResponse>>>() {
+            override fun getCached() = dao.getAll().map { entities ->
+                entities.map { it.toDomain() }
+            }
+
+            override fun shouldFetch(data: List<Product>?) = data.isNullOrEmpty()
+
+            override suspend fun createCall() = remoteDataSource.getProducts()
+
+            override suspend fun saveCallResult(data: ApiResponse<List<ProductResponse>>) {
+                dao.insertAll(data.data?.map { it.toEntity() } ?: emptyList())
+            }
+        }.asFlow()
+}
+```
+
+### `NetworkBoundProcessResource` for POST, PUT, DELETE
+
+```kotlin
+fun createOrder(request: OrderRequest): Flow<Result<Order?>> =
+    object : NetworkBoundProcessResource<Order?, ApiResponse<OrderResponse>>() {
+        override suspend fun createCall() = remoteDataSource.createOrder(request)
+
+        override suspend fun callBackResult(data: ApiResponse<OrderResponse>): Order? =
+            data.data?.toDomain()
+    }.asFlow()
 ```

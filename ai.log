@@ -1,0 +1,2 @@
+[2026-07-12 19:44:56] Analyzed redundant init-general-rule content and moved reusable guidance into dedicated architecture, networking, storage, quality, and security rules.
+[2026-07-12 19:44:56] Replaced duplicated AGENTS example template with a compact project guide that links to dedicated rule files.

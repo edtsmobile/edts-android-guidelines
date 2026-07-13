@@ -14,6 +14,55 @@
 
 ---
 
+## Coroutines & Flow
+
+- Use `Dispatchers.IO` for blocking I/O or heavyweight database work.
+- Keep Flow transformations in repositories or domain use cases, not in ViewModels, when the transformation is data/business logic.
+- Use `StateFlow` for durable UI state and `SharedFlow` or channels for one-off events.
+- Compose screens must collect state using `collectAsStateWithLifecycle()`, not `collectAsState()`.
+
+```kotlin
+fun getProducts(): Flow<List<Product>> = dao.getAll()
+    .map { entities -> entities.map { it.toDomain() } }
+    .flowOn(Dispatchers.IO)
+
+private val _events = MutableSharedFlow<HomeEvent>()
+val events: SharedFlow<HomeEvent> = _events.asSharedFlow()
+```
+
+---
+
+## Gradle & Dependencies
+
+- Store all dependency versions in `gradle/libs.versions.toml`; never hardcode versions directly in module `build.gradle.kts` files.
+- Use Gradle Kotlin DSL (`.gradle.kts`) and existing convention plugins from `build-logic/` whenever the target project already provides them.
+- Do not change `compileSdk`, `targetSdk`, or `minSdk` without explicit developer confirmation.
+- Use KSP for supported processors such as Room and MapStruct. KAPT is forbidden for new setup.
+
+```kotlin
+plugins {
+    alias(libs.plugins.project.android.feature)
+    alias(libs.plugins.project.android.hilt)
+}
+```
+
+---
+
+## Asset & Resource Policy
+
+Before creating new resources, inspect existing project resources and reuse matching names, colors, drawables, strings, typography, and components.
+
+When migrating from a legacy app:
+
+- Copy API endpoints, request/response field names, business rules, validation rules, navigation flows, and user-facing copy.
+- Copy all drawables, icons, launcher assets, raw assets, fonts, animations, and exact brand color values unless product/design explicitly approves a change.
+- Modernize implementation details such as XML to Compose, Koin to Hilt, Glide/Picasso to Coil for Compose, LiveData to StateFlow/SharedFlow, and Fragment navigation to typed Compose Navigation 3.
+- Do not replace product-specific assets with generic Material icons.
+- Do not change user-facing strings without product approval.
+- Do not hardcode user-facing strings in Kotlin code; use resources or the project's established localization mechanism.
+
+---
+
 ## Naming Conventions
 
 | Element | Convention | Example |
@@ -39,4 +88,3 @@
 | Room Entity (Gen 2) | `Noun + Entity` | `ProductEntity` |
 | DTO / Response (Gen 2) | `Noun + Response` | `ProductResponse` |
 | Domain Model (Gen 2) | `Noun only` | `Product` |
-
