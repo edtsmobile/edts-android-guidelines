@@ -316,18 +316,76 @@ Button(
 | **Static Element (without Module)** | `<app>_<pageName>_<component>` | `poinku_home_buttonPoint` |
 | **Dynamic Collection Item** | `<app>_<module - optional>_<pageName>_<component>-<id>` | `poinku_coupon_couponList_couponCard-123` |
 
-### 4. Reusable ViewHolder / Component Rule (Clean Architecture)
-Reusable components (e.g. `ProductViewHolder`, `ProductCard`) **must not assume the hosting screen name**:
-- Caller (Fragment/Activity) passes `pageContext` into the Adapter constructor.
-- Adapter passes `pageContext` to the ViewHolder/Composable upon binding.
-- ViewHolder formats its tag dynamically:
-  ```kotlin
-  fun bind(item: Product, pageContext: String) {
-      binding.root.setTestTag(
-          module = "food",
-          page = pageContext,
-          component = "productItem",
-          id = item.id
-      )
-  }
-  ```
+### 4. Dynamic Extension & Auto-Resolving `pageName` via Tracker
+
+Pada project EDTS yang mengadopsi library `Tracker` (`id.co.edtslib.tracker`), property `Tracker.currentPageName` secara otomatis diperbarui oleh base classes setiap kali layar baru dibuka (`onResume()`).
+
+Gunakan `Tracker.currentPageName` sebagai **default value parameter `page`** di extension helper:
+
+```kotlin
+/**
+ * Extension untuk memasang Test Tag terstandarisasi.
+ * Parameter [page] secara default otomatis mengambil nama halaman aktif dari Tracker.
+ */
+fun View.setTestTag(
+    component: String,
+    page: String = Tracker.currentPageName.toTestTagPageName(),
+    module: String? = null,
+    id: Any? = null,
+    app: String = "klik"
+) {
+    val modPart = module?.let { "_$it" }.orEmpty()
+    val idPart = id?.let { "-$it" }.orEmpty()
+    this.contentDescription = "${app}${modPart}_${page}_${component}${idPart}"
+}
+
+fun View.setTestTag(tag: String) {
+    this.contentDescription = tag
+}
+
+/**
+ * Sanitasi string judul tracker menjadi camelCase (contoh: "Detail Produk" -> "detailProduk").
+ */
+fun String?.toTestTagPageName(): String {
+    return this?.trim()
+        ?.split(Regex("\\s+"))
+        ?.mapIndexed { index, s ->
+            if (index == 0) s.lowercase() else s.replaceFirstChar { it.uppercase() }
+        }
+        ?.joinToString("")
+        ?.ifEmpty { "defaultPage" }
+        ?: "defaultPage"
+}
+```
+
+### 5. Reusable ViewHolder / Component Rule (Zero-Boilerplate)
+
+Karena `page` secara default membaca `Tracker.currentPageName`, reusable component (seperti `ProductViewHolder`, `ProductCard`) **tidak perlu dipasangi parameter `pageContext` secara berantai dari Fragment/Adapter**:
+
+```kotlin
+// Reusable ViewHolder: CUKUP isi component & id!
+class ProductViewHolder(
+    private val binding: ItemProductBinding
+) : RecyclerView.ViewHolder(binding.root) {
+
+    fun bind(item: Product, module: String = "food") {
+        // Otomatis menghasilkan:
+        // - klik_food_productDetail_productItem-123 (jika sedang di PDP)
+        // - klik_food_cartPage_productItem-123 (jika sedang di Cart)
+        binding.root.setTestTag(
+            module = module,
+            component = "productItem",
+            id = item.id
+        )
+
+        binding.btnAddToCart.setTestTag(
+            module = module,
+            component = "btnAddToCart",
+            id = item.id
+        )
+    }
+}
+```
+
+> **Catatan Override:** Jika suatu saat diperlukan nama layar yang berbeda dari nama tracking, developer tetap dapat meng-override parameter secara manual:
+> `binding.root.setTestTag(page = "customScreen", component = "productItem", id = item.id)`
