@@ -38,8 +38,9 @@ When boarding a new project, read the guideline rules in the following sequence 
    - Obfuscation and safety: read **[Security Guidelines](rules/9-security.md)**.
 5. **Quality Gates**:
    - Unit testing: read **[Unit Testing Requirements](rules/10-unit-testing.md)**.
-   - Code review checklist: read **[Code Review Rules](rules/11-code-review.md)**.
-   - Git compliance & safety: read **[Git Safety Rules](rules/11-code-review.md#7-git-safety)**.
+   - UI testing: read **[UI Testing Rules](rules/11-ui-testing.md)**.
+   - Code review checklist: read **[Code Review Rules](rules/12-code-review.md)**.
+   - Git compliance & safety: read **[Git Safety Rules](rules/12-code-review.md#7-git-safety)**.
 
 ---
 

@@ -42,8 +42,9 @@ Update this table to match the actual target project's Gradle configuration.
 | Local storage | Room, KSP, EDTSKU local sources | `rules/7-local-storage.md` |
 | Code quality | Kotlin conventions, Gradle, resources, coroutine rules | `rules/8-code-quality.md` |
 | Security | Secrets, token storage, TLS, sensitive files | `rules/9-security.md` |
-| Testing | JUnit4, MockK, Truth, Coroutines Test, Turbine | `rules/10-unit-testing.md` |
-| Review | Code review checklist and Git safety | `rules/11-code-review.md` |
+| Unit Testing | JUnit4, MockK, Truth, Coroutines Test, Turbine | `rules/10-unit-testing.md` |
+| UI Testing | Espresso, Compose Test, Test Tags, Analytics Bypass | `rules/11-ui-testing.md` |
+| Review | Code review checklist and Git safety | `rules/12-code-review.md` |
 
 ---
 
@@ -55,7 +56,7 @@ Update this table to match the actual target project's Gradle configuration.
    - Compose multi-module: `rules/4a-compose-multi-module.md`
    - Compose single-module: `rules/4b-compose-single-module.md`
 3. Read the layer rule for the code being changed: networking, mapping, local storage, code quality, security, or testing.
-4. For reviews, read `rules/11-code-review.md` before writing findings.
+4. For reviews, read `rules/12-code-review.md` before writing findings.
 
 ---
 

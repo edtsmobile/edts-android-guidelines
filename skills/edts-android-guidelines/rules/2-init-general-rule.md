@@ -56,7 +56,8 @@ The generated or merged `AGENTS.md` file should follow [../EXAMPLE.AGENTS.md](..
 | Code quality, Gradle, resources | [8-code-quality.md](8-code-quality.md) |
 | Security | [9-security.md](9-security.md) |
 | Unit testing | [10-unit-testing.md](10-unit-testing.md) |
-| Code review and Git safety | [11-code-review.md](11-code-review.md) |
+| UI testing | [11-ui-testing.md](11-ui-testing.md) |
+| Code review and Git safety | [12-code-review.md](12-code-review.md) |
 
 ---
 
