@@ -10,13 +10,23 @@
 1. **Test user journeys instead of implementation details** — verify critical user journeys (Happy Paths, conversion funnels, major error screens) end-to-end. Do not test visual padding or internal ViewModel states in UI tests (reserve that for Unit/Screenshot tests).
 2. **Direct Navigation is Allowed (Case-by-Case)** — launching directly into the target screen using Intent parameters or Compose isolated screens is allowed to eliminate flakiness and reduce execution time, but is not mandatory. Choose between direct navigation and full multi-screen flows depending on the test objective (e.g. testing isolated screen states vs. end-to-end user journeys).
 3. **Disable Tracker & Analytics (Mandatory)** — suppress or stub all analytics, tracking, and telemetry SDKs (`Tracker`, `Sentinel`, `FirebaseAnalytics`, `AppsFlyer`) during UI test runs to avoid polluting production/staging analytics data, eliminate network overhead, and prevent crashes from missing dependencies.
-4. **Mock API responses & Remote Config (Mandatory)** — never rely on live backend or staging services. Use Koin module overrides, Hilt `@UninstallModules`, or OkHttp `MockWebServer`.
+4. **Mock API responses & Remote Config via Hand-Rolled Fakes (Mandatory)** — Never rely on live backend or staging services. SANGAT DISARANKAN menggunakan **Hand-Rolled Fakes (`FakeXxxRepository : IXxxRepository`)** alih-alih dynamic proxy MockK (`mockk-android`) pada runtime Android (ART) untuk mencegah `KotlinReflectionInternalError: Unresolved class: String`. Gunakan Koin module overrides atau Hilt `@UninstallModules`.
 5. **Keep tests isolated & independent (Zero Residual State)** — execute OS-level state wipes (`adb shell pm clear <pkg>` or Maestro `clearState`) or in-app storage reset (`UITestHelper.resetStorage()`) between test suites.
 6. **Use Arrange, Act, Assert Pattern** — structure tests explicitly: Arrange (setup mocks, remote config, target screen/intent), Act (launch Activity/Composable & perform user actions), Assert (verify UI elements).
 7. **Use compile-time safe accessibility IDs** — avoid raw string literals, localized text, or brittle view index hierarchies. Define nested `object` constants mirroring the agreed naming schema.
-8. **Inherit from `BaseUITest`** — centralize app initialization, system alert/permission handlers (`GrantPermissionRule`), and resilient interaction helpers (`tapWhenVisible`, `waitForView`, `clearAndTypeText`).
+8. **Inherit from `BaseUITest` (Mandatory)** — centralize app initialization, system alert/permission handlers (`GrantPermissionRule`), automated shell-level device preconditioning (autofill kill-switch, animation zeroing), and resilient interaction helpers (`waitForView`, `tapWhenVisible`, `tapUntilSatisfied`, `typeIntoField` with `replaceText`, `checkButtonEnabled`).
 9. **Never rely solely on `BuildConfig.DEBUG` — use `UITestHelper.isUITesting`** — `BuildConfig.DEBUG` is active during everyday manual development. Always require an explicit UI testing flag before activating test mocks or suppressing trackers.
 10. **Prevent `App.kt` Clutter with `UITestHelper`** — encapsulate all argument parsing, storage resets, mock configs, and analytics suppression in a dedicated `UITestHelper` located in `app/src/debug/`.
+11. **Production Code Immutability (Hands-Off Rule)** — Saat membuat UI test, DILARANG KERAS memodifikasi kode produksi (Activity, Fragment, ViewModel, UseCase, Layout XML) selain HANYA menambahkan Test Tag (`setTestTag`). Jika ditemukan bug di kode produksi atau dibutuhkan refactor agar view testable, WAJIB konfirmasi ke developer terlebih dahulu sebelum mengeksekusi dan pastikan tidak mengubah fungsionalitas yang ada.
+12. **Exhaustive & Boundary Test Coverage (Sedetail Mungkin)** — Jangan hanya menguji 1 happy path. Uji skenario sedetail mungkin:
+    - *Boundary values*: minimum & maximum panjang karakter, prefix format (misal 08 vs 62 vs non-digit).
+    - *Validation error states*: field wajib kosong, password mismatch, format email/password invalid.
+    - *Component state toggles*: tombol disabled saat input kosong, enabled saat valid, tombol switcher mode (misal tombol 'Ubah').
+    - *Domain edge cases*: akun terhapus (`deleted = true`), akun belum terdaftar, response error code spesifik.
+13. **Mandatory Device Verification (No Assumptions)** — UI test TIDAK BOLEH dianggap selesai hanya karena kompilasi sukses. Wajib dieksekusi langsung pada target device/emulator via `connectedAndroidTest` dan diverifikasi 100% GREEN.
+14. **Use String Resource IDs (No Hardcoded Copy Text)** — Selalu gunakan `context.getString(R.string.xxx)` atau `withText(R.string.xxx)` dalam assertion. Jangan meng-hardcode string teks di dalam file test agar tahan terhadap perubahan copy teks produk.
+15. **Anti-Arbitrary Sleep (No Raw `Thread.sleep`)** — Dilarang menggunakan `Thread.sleep()` sembarangan di badan test. Gunakan polling reaktif `waitForView()` atau `tapUntilSatisfied()`.
+16. **Test Independence & Zero Sequential Coupling** — Setiap skenario uji `@Test` harus berdiri sendiri (hermetis). Dilarang membuat Test B yang berasumsi Test A sudah dieksekusi atau sudah menyiapkan state/data tertentu.
 
 ---
 
@@ -28,20 +38,20 @@
 @RunWith(AndroidJUnit4::class)
 class CouponListUITests : BaseUITest() {
 
-    private val mockCouponRepo: ICouponRepository = mockk(relaxed = true)
+    private val fakeCouponRepo = FakeCouponRepository()
 
     @Before
     fun setUp() {
-        // Arrange: override Koin repository with test mock
+        // Arrange: override Koin repository dengan Hand-Rolled Fake (zero reflection, aman di ART)
         loadKoinModules(module {
-            single<ICouponRepository>(override = true) { mockCouponRepo }
+            single<ICouponRepository> { fakeCouponRepo }
         })
     }
 
     @Test
     fun test_exchangeButton_displaysSuccess() {
-        // Arrange: stub data contract
-        coEvery { mockCouponRepo.getCoupons() } returns flowOf(
+        // Arrange: stub data contract langsung via property
+        fakeCouponRepo.couponsResponse = flowOf(
             Result.Success(listOf(dummyCouponItem))
         )
 
@@ -51,11 +61,11 @@ class CouponListUITests : BaseUITest() {
         }
         ActivityScenario.launch<CouponListActivity>(intent)
 
+        // Resilient tap helper dari BaseUITest
         tapWhenVisible(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.BUTTON_USE_COUPON))
 
-        // Assert: verify expected UI state
-        onView(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.SUCCESS_BADGE))
-            .check(matches(isDisplayed()))
+        // Assert: verify expected UI state via polling
+        waitForView(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.SUCCESS_BADGE))
     }
 }
 ```
@@ -181,12 +191,38 @@ if (BuildConfig.DEBUG) {
 
 ---
 
-## `BaseUITest` Superclass
+## `BaseUITest` Superclass (Complete Reference)
 
-Inherit all UI test suites from `BaseUITest` to eliminate boilerplate, auto-dismiss system permission dialogs, and use robust interaction helpers:
+Warisi seluruh UI test suite dari `BaseUITest`. Kelas ini menyediakan:
+1. **Otomatisasi Prekondisi Device via Shell (`UiAutomation`)**: Mematikan autofill prompt (Google Password Manager) dan men-zero animasi sistem agar timing Espresso 100% deterministik.
+2. **Auto-Dismiss Permission Dialogs (`GrantPermissionRule`)**: Menghindari system dialog memblokir UI flow.
+3. **Target App Context**: Menyediakan `context` aplikasi sesungguhnya via `targetContext`.
+4. **Resilient Interaction Helpers**: Menangani polling (`waitForView`), tap yang tertelan pada popup/slide-up window transition (`tapUntilSatisfied`), compound view input dengan `replaceText` (`typeIntoField`), dan verifikasi tombol (`checkButtonEnabled`).
 
 ```kotlin
 open class BaseUITest {
+
+    companion object {
+        @BeforeClass
+        @JvmStatic
+        fun disableSystemOverlaysAndAnimations() {
+            // 1. Kill autofill service agar Google Password Manager/Autofill tidak menutupi view/CTA
+            runShellCommand("settings put secure autofill_service null")
+            // 2. Zero-out animasi sistem agar timing interaksi deterministik dan tidak memicu flakiness
+            runShellCommand("settings put global window_animation_scale 0")
+            runShellCommand("settings put global transition_animation_scale 0")
+            runShellCommand("settings put global animator_duration_scale 0")
+        }
+
+        private fun runShellCommand(command: String) {
+            try {
+                InstrumentationRegistry.getInstrumentation().uiAutomation
+                    .executeShellCommand(command)
+                    .close()
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     @get:Rule(order = 0)
     val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(
@@ -194,27 +230,25 @@ open class BaseUITest {
         android.Manifest.permission.POST_NOTIFICATIONS
     )
 
+    /** Target app context (bukan instrumentation context). */
     protected val context: Context
-        get() = ApplicationProvider.getApplicationContext()
+        get() = InstrumentationRegistry.getInstrumentation().targetContext
 
     @Before
     @CallSuper
     open fun setUpBase() {
-        // Auto-disable all analytics & telemetry
+        // Pastikan kembali autofill mati sebelum tiap test suite berjalan
+        runShellCommand("settings put secure autofill_service null")
+        // Auto-disable seluruh tracking & telemetry (No-Op Gateway Pattern)
         AnalyticsBypassHelper.disableAllAnalytics(context)
     }
 
-    // MARK: - Resilient Interaction Helpers
-    fun tapWhenVisible(matcher: Matcher<View>, timeoutMs: Long = 5000) {
-        waitForView(matcher, timeoutMs)
-        onView(matcher).perform(click())
-    }
+    // ------------------------------------------------------------------
+    // Resilient Interaction Helpers
+    // ------------------------------------------------------------------
 
-    fun clearAndTypeText(matcher: Matcher<View>, text: String) {
-        onView(matcher).perform(clearText(), typeText(text), closeSoftKeyboard())
-    }
-
-    fun waitForView(matcher: Matcher<View>, timeoutMs: Long = 5000): ViewInteraction {
+    /** Polling until view displayed — menghindari flakiness akibat animasi/async API. */
+    protected fun waitForView(matcher: Matcher<View>, timeoutMs: Long = 5_000): ViewInteraction {
         val endTime = System.currentTimeMillis() + timeoutMs
         do {
             try {
@@ -224,6 +258,69 @@ open class BaseUITest {
             }
         } while (System.currentTimeMillis() < endTime)
         return onView(matcher).check(matches(isDisplayed()))
+    }
+
+    protected fun tapWhenVisible(matcher: Matcher<View>, timeoutMs: Long = 5_000) {
+        waitForView(matcher, timeoutMs)
+        onView(matcher).perform(click())
+    }
+
+    /**
+     * Tap berulang sampai [verify] terpenuhi.
+     * Mengatasi fenomena "Click Swallowing" pada transisi Activity slide-up (seperti
+     * IdmPopupActivity / BottomSheet) atau saat soft keyboard baru ditutup, di mana
+     * event klik pertama ditelan oleh proses transisi layout window.
+     */
+    protected fun tapUntilSatisfied(
+        matcher: Matcher<View>,
+        verify: Matcher<View>,
+        maxTaps: Int = 5,
+        retryDelayMs: Long = 600
+    ) {
+        waitForView(matcher)
+        repeat(maxTaps) {
+            onView(matcher).perform(click())
+            try {
+                waitForView(verify, timeoutMs = retryDelayMs)
+                return
+            } catch (e: Exception) {
+                // Tap tertelan atau async state masih transition — coba lagi
+            }
+        }
+        waitForView(verify)
+    }
+
+    /**
+     * Mengetik ke dalam field ber-tag [tag].
+     * 
+     * 1. Target Child EditText: Tag biasanya dipasang pada container (TextFieldView / TextInputLayout),
+     *    sehingga helper otomatis menargetkan EditText turunan di dalamnya via isDescendantOfA.
+     * 2. NestedScrollView Safety: Membungkus scrollTo() dalam try-catch karena action bawaan
+     *    Espresso crash jika container bukan ScrollView murni (misal NestedScrollView).
+     * 3. replaceText vs typeText: Menggunakan replaceText() untuk mengeliminasi race condition
+     *    "keystroke drop" (karakter pertama terpotong saat IME keyboard sedang membuka).
+     */
+    protected fun typeIntoField(tag: String, text: String) {
+        val interaction = onView(
+            allOf(
+                isAssignableFrom(EditText::class.java),
+                isDescendantOfA(withContentDescription(tag))
+            )
+        )
+        try {
+            interaction.perform(scrollTo())
+        } catch (_: Exception) {
+            // View may already be visible or inside a non-ScrollView container (e.g. NestedScrollView)
+        }
+        interaction.perform(click(), replaceText(text), closeSoftKeyboard())
+    }
+
+    /** Verifikasi status isEnabled tombol (misal tombol submit non-aktif saat form kosong). */
+    protected fun checkButtonEnabled(tag: String, enabled: Boolean) {
+        waitForView(withContentDescription(tag))
+        onView(withContentDescription(tag)).check(
+            matches(if (enabled) isEnabled() else not(isEnabled()))
+        )
     }
 }
 ```
@@ -389,3 +486,130 @@ class ProductViewHolder(
 
 > **Catatan Override:** Jika suatu saat diperlukan nama layar yang berbeda dari nama tracking, developer tetap dapat meng-override parameter secara manual:
 > `binding.root.setTestTag(page = "customScreen", component = "productItem", id = item.id)`
+
+---
+
+## Hand-Rolled Fakes vs. MockK on Android ART Runtime
+
+### 1. Masalah Fatal MockK di Android Instrumentation (`androidTest`)
+Pada unit test lokal (JVM di desktop), MockK bekerja sangat baik. Namun di Android Instrumentation (`androidTest`), runtime yang digunakan adalah **Android ART** (bukan standard HotSpot JVM).
+- **Dexmaker Proxy Limitation**: Library `mockk-android` men-generate bytecode proxy dinamis via Dexmaker.
+- **Reflection Crash pada Primitives/String**: Saat melakukan recording mock invocation (misal: `coEvery { mockRepo.isUserExist("08123") }`), MockK sering melempar:
+  ```
+  KotlinReflectionInternalError: Unresolved class: String
+  ```
+  atau crash bytecode verifier saat stubbing method coroutine Flow.
+- **Koin 3+ DSL Incompatibility**: Sintaks `single<T>(override = true)` sudah deprecated/dihapus pada Koin 3+. Override modul Koin harus dilakukan secara clean via instance fake tanpa parameter `override = true`.
+
+### 2. Standar Solusi: Hand-Rolled Fake (Test Double)
+Implementasikan interface repository domain (`IXxxRepository`) menggunakan kelas Fake murni dalam folder `androidTest/.../fake/`:
+
+```kotlin
+/**
+ * Hand-rolled Fake ICouponRepository untuk hermetic UI testing.
+ * Zero reflection overhead, zero Dexmaker dependency, 100% aman di ART.
+ */
+class FakeCouponRepository : ICouponRepository {
+
+    // Sediakan property Flow yang bisa diubah kapan saja per skenario uji
+    var couponsResponse: Flow<Result<List<CouponItem>?>> = flowOf(
+        Result(Result.Status.SUCCESS, emptyList(), "01", "OK")
+    )
+
+    override fun getCoupons(): Flow<Result<List<CouponItem>?>> = couponsResponse
+
+    // Method mutasi cukup mengembalikan response default sukses
+    override fun redeemCoupon(couponId: String): Flow<Result<Boolean?>> = 
+        flowOf(Result(Result.Status.SUCCESS, true, "01", "OK"))
+}
+```
+
+### 3. Matriks Perbandingan
+
+| Dimensi | MockK Android (`mockk-android`) | Hand-Rolled Fake (`FakeRepository`) |
+|---|---|---|
+| **Stabilitas ART** | ❌ Rentan `KotlinReflectionInternalError` | ✅ **100% Native Bytecode (Bebas Crash)** |
+| **Kecepatan Run** | ⚠️ Lambat (beban bytecode generation di device) | ⚡ **10x Lebih Cepat** (instansiasi POJO biasa) |
+| **Keterbacaan Test** | ⚠️ Boilerplate `coEvery { ... } returns ...` berulang | ✅ Cukup re-assign property: `fakeRepo.response = ...` |
+| **Refactoring Safety** | ❌ Runtime fail jika nama/tipe method berubah | ✅ Compile-time check via Kotlin compiler |
+
+---
+
+## Resilient Interaction Patterns & Common UI Automation Pitfalls
+
+### 1. Autofill Service Interference & Kill-Switch
+* **Gejala**: Pada Android 12 hingga 16, Google Password Manager atau autofill provider otomatis memunculkan pop-up / dropdown saat `EditText` mendapatkan fokus. Dialog ini memblokir sentuhan ke tombol submit atau navigasi di bawahnya.
+* **Solusi**: Matikan autofill service via shell di `BaseUITest` (`settings put secure autofill_service null`).
+
+### 2. Zeroing System Animations
+* **Gejala**: Transisi window, fading dialog, dan interpolator animasi bawaan OS membuat timing Espresso tidak sinkron dan menyebabkan flaky click.
+* **Solusi**: Zero-out seluruh skala animasi sistem via shell:
+  ```bash
+  settings put global window_animation_scale 0
+  settings put global transition_animation_scale 0
+  settings put global animator_duration_scale 0
+  ```
+
+### 3. `replaceText` vs `typeText` (Keystroke Dropping)
+* **Gejala**: Memanggil `typeText("628123456789")` menghasilkan input `"28123456789"` karena karakter pertama `'6'` tertelan saat keyboard software (IME) sedang beranimasi membuka.
+* **Solusi**: Gunakan `replaceText(text)`. `replaceText` men-set teks langsung pada view menggunakan `Editable.replace()`, memicu seluruh listener `TextWatcher` / `TextFieldDelegate` secara atomik tanpa mengirimkan virtual key event per milidetik.
+
+### 4. Compound Component Targeting (`TextFieldView` / `TextInputLayout`)
+* **Gejala**: Memasang tag pada container compound view (seperti EDTS DS `TextFieldView`) lalu memanggil `onView(withContentDescription(tag)).perform(...)` menyebabkan crash karena container bukan turunan `EditText`.
+* **Solusi**: Targetkan child `EditText` di dalam container ber-tag:
+  ```kotlin
+  onView(
+      allOf(
+          isAssignableFrom(EditText::class.java),
+          isDescendantOfA(withContentDescription(tag))
+      )
+  )
+  ```
+
+### 5. `NestedScrollView` vs `ScrollView` (`scrollTo()` PerformException)
+* **Gejala**: Action bawaan Espresso `scrollTo()` melempar exception jika parent bukan `android.widget.ScrollView` murni (hampir semua layout modern EDTS menggunakan `NestedScrollView`).
+* **Solusi**: Bungkus `interaction.perform(scrollTo())` dalam blok `try-catch` agar tidak crash jika view berada di dalam `NestedScrollView` atau sudah terlihat di viewport.
+
+### 6. Click-Swallowing pada Popup / Slide-Up Transitions (`tapUntilSatisfied`)
+* **Gejala**: Pada activity dengan transisi slide-up (seperti `IdmPopupActivity`), modal bottom sheet, atau saat soft keyboard baru tertutup, klik pertama sering kali tertelan oleh sistem windowing. Espresso mencatat klik berhasil, namun state halaman tidak berubah.
+* **Solusi**: Gunakan helper `tapUntilSatisfied(matcher, verify, maxTaps = 5, retryDelayMs = 600)` yang memvalidasi perubahan state setelah tiap tap dan mengulang jika event tertelan.
+
+---
+
+## Build Configuration, Dependencies & Device Execution
+
+### 1. Dekopling Firebase BoM di `libs.versions.toml`
+Pada Android Gradle Plugin (AGP), dependensi Firebase BoM di `implementation` **tidak otomatis merambat** ke classpath `androidTest`. Jika pengujian mengakses `FirebaseAnalytics` via `AnalyticsBypassHelper`, pin modul Firebase `-ktx` secara eksplisit:
+
+```toml
+[libraries]
+# Wajib dipin eksplisit agar androidTest classpath dapat mengompilasi AnalyticsBypassHelper
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx", version = "21.2.0" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx", version = "18.3.2" }
+firebase-config = { group = "com.google.firebase", name = "firebase-config-ktx", version = "21.2.0" }
+```
+
+### 2. JDK Compatibility
+Pastikan eksekusi test menggunakan **Java 17 (misal: Corretto 17)**. Versi Java 21+ atau Java 25 dapat memicu incompatibilities pada toolchain AGP/Kotlin:
+```bash
+export JAVA_HOME="/Users/<user>/Library/Java/JavaVirtualMachines/corretto-17.0.17/Contents/Home"
+```
+
+### 3. Cheat Sheet Perintah Eksekusi Gradle
+
+```bash
+# 1. Jalankan seluruh UI Test suite di device / emulator tertentu:
+ANDROID_SERIAL=<device_serial> ./gradlew :app:connectedDevelopmentDebugAndroidTest
+
+# 2. Jalankan spesifik satu test class:
+ANDROID_SERIAL=<device_serial> ./gradlew :app:connectedDevelopmentDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=edts.klikidm.android.uitest.auth.LoginUITests
+
+# 3. Jalankan spesifik satu method uji:
+ANDROID_SERIAL=<device_serial> ./gradlew :app:connectedDevelopmentDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=edts.klikidm.android.uitest.auth.LoginUITests#loginExistingUserShowsPasswordStep
+
+# 4. Bersihkan state aplikasi antar run (Zero Residual State):
+adb -s <device_serial> shell pm clear edts.klikidm.dev.android
+```
+
