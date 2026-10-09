@@ -22,7 +22,8 @@ You are working on an **EDTS Android project**. These guidelines are mandatory â
 | [rules/8-code-quality.md](rules/8-code-quality.md)                     | Naming conventions and Kotlin code quality standards            |
 | [rules/9-security.md](rules/9-security.md)                             | Security rules (tokens, storage, networking)                    |
 | [rules/10-unit-testing.md](rules/10-unit-testing.md)                   | Unit testing rules and patterns (JUnit4 + MockK + Google Truth) |
-| [rules/11-code-review.md](rules/11-code-review.md)                     | Code review checklist and reporting rules                       |
+| [rules/11-ui-testing.md](rules/11-ui-testing.md)                       | UI testing rules and patterns (Espresso + Compose + Test Tags)  |
+| [rules/12-code-review.md](rules/12-code-review.md)                     | Code review checklist and reporting rules                       |
 
 ## AI Workflow Rules
 
