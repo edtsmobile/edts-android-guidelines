@@ -7,7 +7,11 @@
 
 ## Core Rules
 
-1. **Test user journeys instead of implementation details** — verify critical user journeys (Happy Paths, conversion funnels, major error screens) end-to-end. Do not test visual padding or internal ViewModel states in UI tests (reserve that for Unit/Screenshot tests).
+1. **Test user journeys instead of implementation details** — verify critical user journeys (Happy Paths, conversion funnels, major error screens) end-to-end. Do not assert visual styling (`sp`, `dp`, hex colors, corner radius, padding) or internal ViewModel states in Functional UI tests:
+   - **Unit Test**: *"Is the logic right?"* (business rules, calculations, mapping).
+   - **Screenshot / Snapshot Test** (Paparazzi/Roborazzi): *"Does it look right?"* (colors, typography, corner radius, spacing, layout overlap).
+   - **Functional UI Test** (Espresso/Compose): *"Does it work for the user?"* (interactions, state transitions, visibility, semantic copy, UI ↔ logic wiring).
+   - **Peran Figma di UI Test**: Gunakan Figma sebagai *source of truth* untuk seluruh **UI states, elemen interaktif, dan copy/CTA** (bukan untuk assert piksel/warna di Espresso). Jika user menyediakan link Figma, WAJIB inspeksi isi frame (`get_screenshot` / `get_design_context`), bukan hanya membaca daftar nama node (`get_metadata`).
 2. **Direct Navigation is Allowed (Case-by-Case)** — launching directly into the target screen using Intent parameters or Compose isolated screens is allowed to eliminate flakiness and reduce execution time, but is not mandatory. Choose between direct navigation and full multi-screen flows depending on the test objective (e.g. testing isolated screen states vs. end-to-end user journeys).
 3. **Disable Tracker & Analytics (Mandatory)** — suppress or stub all analytics, tracking, and telemetry SDKs (`Tracker`, `Sentinel`, `FirebaseAnalytics`, `AppsFlyer`) during UI test runs to avoid polluting production/staging analytics data, eliminate network overhead, and prevent crashes from missing dependencies.
 4. **Mock API responses & Remote Config via Hand-Rolled Fakes (Mandatory)** — Never rely on live backend or staging services. SANGAT DISARANKAN menggunakan **Hand-Rolled Fakes (`FakeXxxRepository : IXxxRepository`)** alih-alih dynamic proxy MockK (`mockk-android`) pada runtime Android (ART) untuk mencegah `KotlinReflectionInternalError: Unresolved class: String`. Gunakan Koin module overrides atau Hilt `@UninstallModules`.
@@ -27,6 +31,9 @@
 14. **Use String Resource IDs (No Hardcoded Copy Text)** — Selalu gunakan `context.getString(R.string.xxx)` atau `withText(R.string.xxx)` dalam assertion. Jangan meng-hardcode string teks di dalam file test agar tahan terhadap perubahan copy teks produk.
 15. **Anti-Arbitrary Sleep (No Raw `Thread.sleep`)** — Dilarang menggunakan `Thread.sleep()` sembarangan di badan test. Gunakan polling reaktif `waitForView()` atau `tapUntilSatisfied()`.
 16. **Test Independence & Zero Sequential Coupling** — Setiap skenario uji `@Test` harus berdiri sendiri (hermetis). Dilarang membuat Test B yang berasumsi Test A sudah dieksekusi atau sudah menyiapkan state/data tertentu.
+17. **Spec-Driven Assertions & Anti-Tautology (Mandatory)** — Sumber kebenaran assertion adalah **PRD, API Docs, Figma, dan UI `strings.xml`**, BUKAN enum/konstanta internal produksi yang dipakai ViewHolder/Adapter untuk me-render teks tersebut (contoh: dilarang assert `withText(PromoDabSeeAll.SeeAll.toString())` ketika ViewHolder sendiri memakai enum yang sama — itu hanya membuktikan `X == X` dan menyembunyikan bug mismatch runtime terhadap Figma/PRD). Jika test gagal karena kode produksi melenceng dari PRD/Figma, laporkan sebagai temuan bug produksi sesuai Rule 11.
+18. **Koin Module Teardown (`unloadKoinModules` di `@After`)** — Setiap `loadKoinModules(testModule)` di `@Before` WAJIB dibersihkan dengan `unloadKoinModules(testModule)` di `@After` agar fake override tidak bocor ke test class lain yang berjalan dalam proses instrumentation yang sama.
+19. **Scoped Matchers & No Magic RecyclerView Indices** — Pada layout berulang (RecyclerView ViewHolder), selalu scope matcher teks/komponen dengan `isDescendantOfA(withContentDescription(itemTag))` atau `allOf(withText(...), isDisplayed())` untuk mencegah `AmbiguousViewMatcherException` dari view `GONE` pada sibling card. Dilarang meng-hardcode posisi adapter (misal `scrollToPosition(5)`); gunakan scroll dinamis hingga target matcher tampil (`scrollRecyclerUntilVisible`).
 
 ---
 
@@ -38,14 +45,23 @@
 @RunWith(AndroidJUnit4::class)
 class CouponListUITests : BaseUITest() {
 
-    private val fakeCouponRepo = FakeCouponRepository()
+    private lateinit var fakeCouponRepo: FakeCouponRepository
+    private lateinit var koinTestModule: Module
 
     @Before
     fun setUp() {
         // Arrange: override Koin repository dengan Hand-Rolled Fake (zero reflection, aman di ART)
-        loadKoinModules(module {
+        fakeCouponRepo = FakeCouponRepository()
+        koinTestModule = module {
             single<ICouponRepository> { fakeCouponRepo }
-        })
+        }
+        loadKoinModules(koinTestModule)
+    }
+
+    @After
+    fun tearDown() {
+        // Wajib unload agar override tidak bocor ke test class lain dalam 1 proses instrumentation
+        unloadKoinModules(koinTestModule)
     }
 
     @Test
@@ -55,17 +71,18 @@ class CouponListUITests : BaseUITest() {
             Result.Success(listOf(dummyCouponItem))
         )
 
-        // Act: launch Activity directly with Intent params
+        // Act: gunakan launchActivityForResult jika perlu verifikasi scenario.result.resultCode
         val intent = Intent(context, CouponListActivity::class.java).apply {
             putExtra("EXTRA_INITIAL_SCREEN", UITestScreen.COUPON_LIST)
         }
-        ActivityScenario.launch<CouponListActivity>(intent)
+        ActivityScenario.launchActivityForResult<CouponListActivity>(intent).use { scenario ->
+            // Resilient tap helper dari BaseUITest
+            tapWhenVisible(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.BUTTON_USE_COUPON))
 
-        // Resilient tap helper dari BaseUITest
-        tapWhenVisible(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.BUTTON_USE_COUPON))
-
-        // Assert: verify expected UI state via polling
-        waitForView(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.SUCCESS_BADGE))
+            // Assert: verify expected UI state via polling + domain call contract
+            waitForView(withContentDescription(PoinkuAccessibilityId.Coupon.CouponList.SUCCESS_BADGE))
+            assertEquals("COUPON_1", fakeCouponRepo.redeemCouponCalls.lastOrNull())
+        }
     }
 }
 ```
@@ -322,6 +339,31 @@ open class BaseUITest {
             matches(if (enabled) isEnabled() else not(isEnabled()))
         )
     }
+
+    /** Polling until view inside a Dialog / BottomSheet window is displayed. */
+    protected fun waitForDialogView(matcher: Matcher<View>, timeoutMs: Long = 5_000): ViewInteraction {
+        val endTime = System.currentTimeMillis() + timeoutMs
+        do {
+            try {
+                return onView(matcher).inRoot(isDialog()).check(matches(isDisplayed()))
+            } catch (_: Exception) {
+                Thread.sleep(100)
+            }
+        } while (System.currentTimeMillis() < endTime)
+        return onView(matcher).inRoot(isDialog()).check(matches(isDisplayed()))
+    }
+
+    /** Polling until an ActivityScenario finishes and reaches DESTROYED state. */
+    protected fun <T : Activity> waitForActivityDestroyed(
+        scenario: ActivityScenario<T>,
+        timeoutMs: Long = 5_000
+    ) {
+        val endTime = System.currentTimeMillis() + timeoutMs
+        while (scenario.state != Lifecycle.State.DESTROYED && System.currentTimeMillis() < endTime) {
+            Thread.sleep(100)
+        }
+        assertEquals(Lifecycle.State.DESTROYED, scenario.state)
+    }
 }
 ```
 
@@ -511,6 +553,9 @@ Implementasikan interface repository domain (`IXxxRepository`) menggunakan kelas
  */
 class FakeCouponRepository : ICouponRepository {
 
+    // Call recorder untuk memverifikasi kontrak parameter domain tanpa MockK reflection
+    val redeemCouponCalls = mutableListOf<String>()
+
     // Sediakan property Flow yang bisa diubah kapan saja per skenario uji
     var couponsResponse: Flow<Result<List<CouponItem>?>> = flowOf(
         Result(Result.Status.SUCCESS, emptyList(), "01", "OK")
@@ -518,9 +563,11 @@ class FakeCouponRepository : ICouponRepository {
 
     override fun getCoupons(): Flow<Result<List<CouponItem>?>> = couponsResponse
 
-    // Method mutasi cukup mengembalikan response default sukses
-    override fun redeemCoupon(couponId: String): Flow<Result<Boolean?>> = 
-        flowOf(Result(Result.Status.SUCCESS, true, "01", "OK"))
+    // Method mutasi merekam argumen yang dikirim lalu mengembalikan response default sukses
+    override fun redeemCoupon(couponId: String): Flow<Result<Boolean?>> {
+        redeemCouponCalls.add(couponId)
+        return flowOf(Result(Result.Status.SUCCESS, true, "01", "OK"))
+    }
 }
 ```
 
@@ -573,6 +620,22 @@ class FakeCouponRepository : ICouponRepository {
 ### 6. Click-Swallowing pada Popup / Slide-Up Transitions (`tapUntilSatisfied`)
 * **Gejala**: Pada activity dengan transisi slide-up (seperti `IdmPopupActivity`), modal bottom sheet, atau saat soft keyboard baru tertutup, klik pertama sering kali tertelan oleh sistem windowing. Espresso mencatat klik berhasil, namun state halaman tidak berubah.
 * **Solusi**: Gunakan helper `tapUntilSatisfied(matcher, verify, maxTaps = 5, retryDelayMs = 600)` yang memvalidasi perubahan state setelah tiap tap dan mengulang jika event tertelan.
+
+### 7. `ActivityScenario.launch` vs `launchActivityForResult`
+* **Gejala**: Memanggil `scenario.result.resultCode` pada Activity yang diluncurkan dengan `ActivityScenario.launch(...)` melempar `IllegalStateException: Make sure you are using launchActivityForResult()`.
+* **Solusi**: Gunakan `ActivityScenario.launchActivityForResult(...)` pada setiap skenario yang memverifikasi `Activity.RESULT_OK` / result Intent setelah `finish()`.
+
+### 8. Repeated ViewHolder Layouts (`AmbiguousViewMatcherException`) & Magic RecyclerView Indices
+* **Gejala**:
+  1. `onView(withText("..."))` crash dengan `AmbiguousViewMatcherException` karena beberapa item RecyclerView meng-inflate XML yang sama (termasuk view yang berstatus `GONE` pada sibling card).
+  2. Hardcode `scrollToPosition(5)` menjadi rapuh setiap kali adapter menambah/mengurangi header atau divider.
+* **Solusi**:
+  1. Scope matcher dengan `allOf(isDescendantOfA(withContentDescription(itemTag)), withText(...))` atau `allOf(withText(...), isDisplayed())`.
+  2. Scroll dinamis sampai target matcher tampil (`scrollRecyclerUntilVisible(targetMatcher)`), tanpa magic position index.
+
+### 9. Dialog & BottomSheet Window Root (`inRoot(isDialog())`)
+* **Gejala**: `onView(...)` / `waitForView(...)` melempar `NoMatchingViewException` meskipun Dialog atau BottomSheet tray (misal `BottomLayoutDialog`) terlihat jelas di layar, karena Espresso default hanya mencari di window Activity utama.
+* **Solusi**: Gunakan `waitForDialogView(matcher)` dan `.inRoot(isDialog())` saat melakukan assertion atau klik pada elemen di dalam Dialog/BottomSheet.
 
 ---
 
